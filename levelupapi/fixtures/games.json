@@ -1,0 +1,25 @@
+[
+  {
+    "model": "levelupapi.game",
+    "pk": 1,
+    "fields": {
+      "name": "Trivial Pursuit",
+      "num_players": 6,
+      "skill_level": 3,
+      "creator": 1,
+      "game_type": 1
+    }
+  },
+
+  {
+    "model": "levelupapi.game",
+    "pk": 2,
+    "fields": {
+      "name": "Dungeons and Dragons",
+      "num_players": 5,
+      "skill_level": 3,
+      "creator": 1,
+      "game_type": 2
+    }
+  }
+]
