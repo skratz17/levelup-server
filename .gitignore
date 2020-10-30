@@ -1,0 +1,4 @@
+*.session.sql
+.pylintrc
+.vscode/
+db.sqlite3
