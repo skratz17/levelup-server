@@ -128,4 +128,3 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
             lookup_field='id'
         )
         fields = ('id', 'url', 'game', 'creator', 'location', 'date', 'time')
-        
