@@ -1,4 +1,5 @@
 """View module for handling requests about games"""
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.http import HttpResponseServerError
 from rest_framework import status, serializers
@@ -110,8 +111,24 @@ class Games(ViewSet):
 
         return Response(serializer.data)
 
+class UserSerializer(serializers.ModelSerializer):
+    """JSON serialiezr for user"""
+    class Meta:
+        model = get_user_model()
+        fields = ('first_name', 'last_name', 'email')
+
+
+class GamerSerializer(serializers.ModelSerializer):
+    """JSON serializer for gamer"""
+    user = UserSerializer(many=False)
+
+    class Meta:
+        model = Gamer
+        fields = ('user', )
+
 class GameSerializer(serializers.HyperlinkedModelSerializer):
     """JSON serializer for games"""
+    creator = GamerSerializer(many=False)
 
     class Meta:
         model = Game
@@ -119,7 +136,6 @@ class GameSerializer(serializers.HyperlinkedModelSerializer):
             view_name='game',
             lookup_field='id'
         )
-        # fields = ('id', 'url', 'name', 'num_players', 'skill_level', 'creator', 'game_type')
-        fields = ('id', 'url', 'name', 'num_players', 'skill_level', 'game_type')
+        fields = ('id', 'url', 'name', 'num_players', 'skill_level', 'creator', 'game_type')
         depth = 1
         
