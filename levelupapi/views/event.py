@@ -1,7 +1,6 @@
 """View module for handling requests about events"""
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.http import HttpResponseServerError
 from rest_framework import status, serializers
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
@@ -43,12 +42,22 @@ class Events(ViewSet):
         Returns:
             Response -- JSON serialized game instance
         """
+        gamer = Gamer.objects.get(user=request.auth.user)
+
         try:
             event = Event.objects.get(pk=pk)
-            serializer = EventSerializer(event, context={'request': request})
-            return Response(serializer.data)
-        except Exception as ex:
-            return HttpResponseServerError(ex)
+        except Event.DoesNotExist:
+            return Response({'message': 'No event with given id found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        event.joined = None
+        try:
+            EventGamer.objects.get(event=event, gamer=gamer)
+            event.joined = True
+        except EventGamer.DoesNotExist:
+            event.joined = False
+
+        serializer = EventSerializer(event, context={'request': request})
+        return Response(serializer.data)
 
     def update(self, request, pk=None):
         """Handle PUT requests for an event
@@ -95,11 +104,22 @@ class Events(ViewSet):
             Response -- JSON serialized list of events
         """
         events = Event.objects.all()
+        gamer = Gamer.objects.get(user=request.auth.user)
 
         # Support filtering events by game
         game = self.request.query_params.get('gameId', None)
         if game is not None:
             events = events.filter(game__id=type)
+
+        for event in events:
+            event.joined = None
+
+            try:
+                EventGamer.objects.get(event=event, gamer=gamer)
+                event.joined = True
+
+            except EventGamer.DoesNotExist:
+                event.joined = False
 
         serializer = EventSerializer(events, many=True, context={'request': request})
         return Response(serializer.data)
@@ -182,4 +202,4 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
             view_name='event',
             lookup_field='id'
         )
-        fields = ('id', 'url', 'game', 'creator', 'location', 'date', 'time')
+        fields = ('id', 'url', 'game', 'creator', 'location', 'date', 'time', 'joined')
