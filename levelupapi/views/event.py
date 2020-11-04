@@ -1,11 +1,11 @@
 """View module for handling requests about events"""
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.http import HttpResponseServerError
 from rest_framework import status, serializers
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
-from levelupapi.models import Game, Event, Gamer
+from rest_framework.decorators import action
+from levelupapi.models import Game, Event, Gamer, EventGamer
 from levelupapi.views.game import GameSerializer
 
 User = get_user_model()
@@ -42,12 +42,22 @@ class Events(ViewSet):
         Returns:
             Response -- JSON serialized game instance
         """
+        gamer = Gamer.objects.get(user=request.auth.user)
+
         try:
             event = Event.objects.get(pk=pk)
-            serializer = EventSerializer(event, context={'request': request})
-            return Response(serializer.data)
-        except Exception as ex:
-            return HttpResponseServerError(ex)
+        except Event.DoesNotExist:
+            return Response({'message': 'No event with given id found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        event.joined = None
+        try:
+            EventGamer.objects.get(event=event, gamer=gamer)
+            event.joined = True
+        except EventGamer.DoesNotExist:
+            event.joined = False
+
+        serializer = EventSerializer(event, context={'request': request})
+        return Response(serializer.data)
 
     def update(self, request, pk=None):
         """Handle PUT requests for an event
@@ -94,14 +104,79 @@ class Events(ViewSet):
             Response -- JSON serialized list of events
         """
         events = Event.objects.all()
+        gamer = Gamer.objects.get(user=request.auth.user)
 
         # Support filtering events by game
         game = self.request.query_params.get('gameId', None)
         if game is not None:
             events = events.filter(game__id=type)
 
+        for event in events:
+            event.joined = None
+
+            try:
+                EventGamer.objects.get(event=event, gamer=gamer)
+                event.joined = True
+
+            except EventGamer.DoesNotExist:
+                event.joined = False
+
         serializer = EventSerializer(events, many=True, context={'request': request})
         return Response(serializer.data)
+
+    @action(methods=['post', 'delete'], detail=True)
+    def signup(self, request, pk=None):
+        """Managing gamers signing up for events"""
+
+        # A gamer wants to sign up for an event
+        if request.method == "POST":
+            event = Event.objects.get(pk=pk)
+            gamer = Gamer.objects.get(user=request.auth.user)
+
+            try:
+                # Determine if user is already signed up
+                registration = EventGamer.objects.get(event=event, gamer=gamer)
+                return Response(
+                    {'message': 'Gamer already signed up for this event.'},
+                    status=status.HTTP_422_UNPROCESSABLE_ENTITY
+                )
+            except EventGamer.DoesNotExist:
+                # The user is not signed up
+                registration = EventGamer()
+                registration.event = event
+                registration.gamer = gamer
+                registration.save()
+
+                return Response({}, status=status.HTTP_201_CREATED)
+
+        elif request.method == "DELETE":
+            # Handle the case that client specifies an event that does not exist
+            try:
+                event = Event.objects.get(pk=pk)
+            except Event.DoesNotExist:
+                return Response(
+                    {'message': 'Event does not exist.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            gamer = Gamer.objects.get(user=request.auth.user)
+
+            try:
+                # Try to delete the signup
+                registration = EventGamer.objects.get(
+                    event=event, gamer=gamer
+                )
+                registration.delete()
+                return Response(None, status=status.HTTP_204_NO_CONTENT)
+            except EventGamer.DoesNotExist:
+                return Response(
+                    {'message': 'Not currently registered for event.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        # If user sent a request that was not POST or DELETE
+        # Tell them their method is not supported
+        return Response({}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 class EventUserSerializer(serializers.ModelSerializer):
     """JSON serializer for event creator's related Django user"""
@@ -127,4 +202,4 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
             view_name='event',
             lookup_field='id'
         )
-        fields = ('id', 'url', 'game', 'creator', 'location', 'date', 'time')
+        fields = ('id', 'url', 'game', 'creator', 'location', 'date', 'time', 'joined')
