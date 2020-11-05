@@ -60,7 +60,7 @@ class Games(ViewSet):
             Response -- Empty body with 204 status code
         """
         gamer = Gamer.objects.get(user=request.auth.user)
-        game_type = GameType.objects.get(request.data["gameTypeId"])
+        game_type = GameType.objects.get(pk=request.data["gameTypeId"])
 
         # mostly the same thing as POST, but this time update the resource w/ given pk
         try:
@@ -133,9 +133,16 @@ class GamerSerializer(serializers.ModelSerializer):
         model = Gamer
         fields = ('user', )
 
+class GameTypeSerializer(serializers.ModelSerializer):
+    """JSON serializer for GameType"""
+    class Meta:
+        model = GameType
+        fields = ('id', 'name')
+
 class GameSerializer(serializers.HyperlinkedModelSerializer):
     """JSON serializer for games"""
     creator = GamerSerializer(many=False)
+    game_type = GameTypeSerializer(many=False)
 
     class Meta:
         model = Game
