@@ -60,10 +60,17 @@ class Games(ViewSet):
             Response -- Empty body with 204 status code
         """
         gamer = Gamer.objects.get(user=request.auth.user)
-        game_type = GameType.objects.get(request.data["gameTypeId"])
+        game_type = GameType.objects.get(pk=request.data["gameTypeId"])
 
         # mostly the same thing as POST, but this time update the resource w/ given pk
-        game = Game.objects.get(pk=pk)
+        try:
+            game = Game.objects.get(pk=pk)
+        except Game.DoesNotExist:
+            return Response(
+                {'message': 'The specified gameId does not exist.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         game.name = request.data["name"]
         game.num_players = request.data["numPlayers"]
         game.skill_level = request.data["skillLevel"]
@@ -126,9 +133,16 @@ class GamerSerializer(serializers.ModelSerializer):
         model = Gamer
         fields = ('user', )
 
+class GameTypeSerializer(serializers.ModelSerializer):
+    """JSON serializer for GameType"""
+    class Meta:
+        model = GameType
+        fields = ('id', 'name')
+
 class GameSerializer(serializers.HyperlinkedModelSerializer):
     """JSON serializer for games"""
     creator = GamerSerializer(many=False)
+    game_type = GameTypeSerializer(many=False)
 
     class Meta:
         model = Game
