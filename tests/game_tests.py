@@ -1,7 +1,7 @@
 import json
 from rest_framework import status
 from rest_framework.test import APITestCase
-from levelupapi.models import GameType
+from levelupapi.models import GameType, Game
 
 class GameTests(APITestCase):
     def setUp(self):
@@ -59,3 +59,11 @@ class GameTests(APITestCase):
         self.assertEqual(json_response['name'], 'Clue')
         self.assertEqual(json_response['skill_level'], 5)
         self.assertEqual(json_response['num_players'], 5)
+
+        # get the object from the db and verify that everything saved properly
+        game = Game.objects.get(name="Clue")
+        self.assertEqual(game.name, 'Clue')
+        self.assertEqual(game.game_type.id, 1)
+        self.assertEqual(game.skill_level, 5)
+        self.assertEqual(game.num_players, 5)
+        self.assertEqual(game.creator.id, 1)
