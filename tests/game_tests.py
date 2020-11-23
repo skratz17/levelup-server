@@ -100,3 +100,40 @@ class GameTests(APITestCase):
         self.assertEqual(json_response["num_players"], 4)
         self.assertEqual(json_response["creator"]["id"], 1)
         self.assertEqual(json_response["game_type"]["id"], 1)
+
+    def test_change_game(self):
+        """
+        Ensure we can change an existing game
+        """
+        game = Game()
+        game.game_type_id = 1
+        game.skill_level = 3
+        game.name = "Sorry"
+        game.num_players = 4
+        game.creator_id = 1
+        game.save()
+
+        data = {
+            "gameTypeId": 1,
+            "skillLevel": 2,
+            "name": "Sorry!",
+            "numPlayers": 4
+        }
+
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token)
+
+        # PUT the new data to update the game
+        response = self.client.put(f"/games/{game.id}", data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        # GET the game again after updating
+        response = self.client.get(f"/games/{game.id}")       
+        json_response = json.loads(response.content)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(json_response["name"], "Sorry!")
+        self.assertEqual(json_response["skill_level"], 2)
+        self.assertEqual(json_response["num_players"], 4)
+        self.assertEqual(json_response["creator"]["id"], 1)
+        self.assertEqual(json_response["game_type"]["id"], 1)
