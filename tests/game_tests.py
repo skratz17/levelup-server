@@ -67,3 +67,36 @@ class GameTests(APITestCase):
         self.assertEqual(game.skill_level, 5)
         self.assertEqual(game.num_players, 5)
         self.assertEqual(game.creator.id, 1)
+
+    def test_get_game(self):
+        """
+        Ensure we can get an existing game.
+        """
+
+        # Seed the DB with a game
+        game = Game()
+        game.game_type_id = 1
+        game.skill_level = 5
+        game.name = "Monopoly"
+        game.num_players = 4
+        game.creator_id = 1
+
+        game.save()
+
+        # Ensure user is authorized
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token)
+
+        # GET the game that we just created
+        response = self.client.get(f"/games/{game.id}")
+
+        json_response = json.loads(response.content)
+
+        # Ensure 200 status code on successful GET
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Ensure response properties are what we expect them to be
+        self.assertEqual(json_response["name"], "Monopoly")
+        self.assertEqual(json_response["skill_level"], 5)
+        self.assertEqual(json_response["num_players"], 4)
+        self.assertEqual(json_response["creator"]["id"], 1)
+        self.assertEqual(json_response["game_type"]["id"], 1)
