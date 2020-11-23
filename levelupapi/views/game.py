@@ -32,7 +32,7 @@ class Games(ViewSet):
         try:
             game.save()
             serializer = GameSerializer(game, context={'request': request})
-            return Response(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         # If a validation error occured in the DB save step, respond with 400 to client
         except ValidationError as ex:
