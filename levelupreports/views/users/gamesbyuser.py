@@ -25,7 +25,7 @@ def usergame_list(request):
                 FROM
                     levelupapi_game g
                 JOIN
-                    levelupapi_gamer gr ON g.gamer_id = gr.id
+                    levelupapi_gamer gr ON g.creator_id = gr.id
                 JOIN
                     auth_user u ON gr.user_id = u.id
             """)
